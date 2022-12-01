@@ -128,6 +128,26 @@ ch3_mini = np.array([
 ])
 
 
+# vid_720p = np.array([
+#     [0, 720],
+#     [1280, 720],
+#     [1280, 0],
+#     [0, 0],
+# ])
+
+# vid_1080p = np.array([
+#     [0, 1080],
+#     [1920, 1080],
+#     [1920, 0],
+#     [0, 0],
+# ])
+
+# change_720p_to_1080p = PixelMapper(vid_720p, vid_1080p)
+
+# ch1 = change_720p_to_1080p.lonlat_to_pixel(ch1)
+# ch2 = change_720p_to_1080p.lonlat_to_pixel(ch2)
+# ch3 = change_720p_to_1080p.lonlat_to_pixel(ch3)
+
 
 pm_1 = PixelMapper(ch1, ch1_mini)
 

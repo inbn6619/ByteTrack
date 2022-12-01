@@ -17,62 +17,40 @@ from shapely.geometry import Point, Polygon
 
 def Tracker():
 
-    vid_path = [
-        '/home/ubuntu/Track_sample/videos/1/realmonitor_20221118_155620.mp4',
-        '/home/ubuntu/Track_sample/videos/1/realmonitor_20221118_155621.mp4',
-        '/home/ubuntu/Track_sample/videos/1/realmonitor_20221118_155622.mp4'
-    ]
-
-
-    cap = list()
-    for path in vid_path:
-        cap.append(cv2.VideoCapture(path))
-
-    # result_video = list()
-    # result_map = list()
-    # origin_video = cv2.VideoCapture('/home/ubuntu/Track_sample/videos/1/realmonitor_20221118_155620.mp4')
+    result_video = list()
+    result_map = list()
 
 
     tracker = BYTETracker(opt, frame_rate=30)
 
-    fcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out_video = cv2.VideoWriter('/home/ubuntu/video.mp4', cv2.VideoWriter_fourcc(*'mp4v'),30, (1280, 720))
+    out_map = cv2.VideoWriter('/home/ubuntu/minimap.mp4', cv2.VideoWriter_fourcc(*'mp4v'),30, (3840, 720))
 
-    width = int(1280) # 가로 길이 가져오기 
-    height = int(720) # 세로 길이 가져오기
 
-    out_size = (width , height // 3)
 
-    fps = 30
-
-    out_video = cv2.VideoWriter('/home/ubuntu/video1.mp4', fcc,fps, out_size)
-    out_map = cv2.VideoWriter('/home/ubuntu/minimap1.mp4', fcc,fps, out_size)
+    origin_video = cv2.VideoCapture('/home/ubuntu/Track_sample/videos/1/realmonitor_20221118_155620.mp4')
 
     coordinate = np.empty((0,5))
 
     past_frame_num = None
-
-    ch2 = np.array([1280, 0, 1280, 0, 0])
-    ch3 = np.array([2560, 0, 2560, 0, 0])
-
-    
 
     with open('/home/ubuntu/Track_sample/datas/1/dataframe1.csv', 'r') as f:
         while True:
             data = f.readline().split(',')[1:]
             
             frame_num = data[0]
-            channel = data[1]
-
+            
             if len(data) > 1:
+
+
                 if past_frame_num != frame_num:
-                    cams = [capture.retrieve()[1] for capture in cap if capture.grab()]
-                    if len(coordinate) != 0 and len(cams) == 3:
-                        # img = origin_video.read()[1]
+                    
+                    if len(coordinate) != 0:
 
                         # images
                         canvas = cv2.imread('Track_sample/minimap_그림판.jpg')
-                        cam1, cam2, cam3 = cams
-                        img = np.hstack((cam1, cam2, cam3))
+
+                        img = origin_video.read()[1]
 
                         # Tracker
                         tracked_targets = tracker.update(coordinate, img.shape)
@@ -136,27 +114,16 @@ def Tracker():
 
                         # 새로운 좌표 저장
                         coordinate = np.empty((0,5))
-                        if channel == 'ch2':
-                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]) + ch2, axis=0)
-                        elif channel == 'ch3':
-                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]) + ch3, axis=0)
-                        else:
-                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]), axis=0)
-                        print(f'start   obj : 0{len(coordinate)} frame : {frame_num}')
+                        coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]), axis=0)
+                        print('start', len(coordinate), frame_num)
+
+
+
+
                 else:
                     # 좌표 저장
-                    if channel == 'ch2':
-                        coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]])  + ch2, axis=0)
-                    elif channel == 'ch3':
-                        coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]) + ch3, axis=0)
-                    else:
-                        coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]), axis=0)
-
-                    if len(coordinate) < 10:
-                        coor = '0' + str(len(coordinate))
-                    else:
-                        coor = len(coordinate)
-                    print(f'ok      obj : {coor} frame : {frame_num}')
+                    coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]), axis=0)
+                    print('ok   ', len(coordinate), frame_num)
 
                     if int(frame_num) > 200:
                         print(f'frame_num : {frame_num}')
@@ -165,6 +132,55 @@ def Tracker():
                 print("<<<<<<<<<<Finish>>>>>>>>>>")
                 break
             past_frame_num = frame_num
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':

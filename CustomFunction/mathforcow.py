@@ -14,7 +14,13 @@ def make_center(corr):
 def find_distance(corr1, corr2):
     c1 = make_center(corr1)
     c2 = make_center(corr2)
-    distance = math.sqrt(sum([i ** 2 for i in [x - y for x, y in zip(c1, c2)]]))
+    distance = math.sqrt(sum([i ** 2 for i in [abs(x) - abs(y) for x, y in zip(c1, c2)]]))
 
     return distance
 
+
+def distance(corr1, corr2):
+    c1, c2 = corr1[0], corr2[0]
+    distance = math.sqrt(sum([i ** 2 for i in [abs(x) - abs(y) for x, y in zip(c1, c2)]]))
+
+    return distance
