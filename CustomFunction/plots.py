@@ -6,9 +6,9 @@ import math
 
 def plot_minimap(xc, yc, minimap, color):
     ### xc, yc 를 미니맵 기준의 좌표로 변환해주는 코드
-    corr1, corr2 = pm_1.pixel_to_lonlat((xc, yc))[0]
-    corr1 = int(corr1)
-    corr2 = int(corr2)
+    # corr1, corr2 = pm_1.pixel_to_lonlat((xc, yc))[0]
+    corr1 = int(xc)
+    corr2 = int(yc)
 
     ### 변환된 좌표로 미니맵에 Dot 찍는 코드
     cv2.line(minimap, (corr1, corr2), (corr1, corr2), color, 50)
