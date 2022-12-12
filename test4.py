@@ -3,12 +3,14 @@ import torch
 import cv2
 import os
 import numpy as np
+import json
 
 
 from CustomFunction.plots import *
 from CustomFunction.VariableGroup import colors
 from CustomFunction.PixelMapper import pm_1, pm_2, pm_3
 from CustomFunction.mathforcow import *
+from CustomFunction.Points_in_Polygon import *
 
 
 from yolox.tracker.byte_tracker import BYTETracker
@@ -42,15 +44,18 @@ def Tracker():
     width = int(1280) # 가로 길이 가져오기 
     height = int(720) # 세로 길이 가져오기
 
-    out_size = (width * 3, height)
+    size_640 = (640, 480)
+
+    out_size = (width * 3, height * 2)
 
     fps = 30
 
-    out_video_and_mini = cv2.VideoWriter('/home/ubuntu/video_and_mini2.mp4', fcc,fps, (3840, 1440))
+    out_video_and_mini = cv2.VideoWriter('/home/ubuntu/video_and_mini1.mp4', fcc,fps, size_640)
+    # out_video_and_mini = cv2.VideoWriter('/home/ubuntu/video_and_mini1.mp4', fcc,fps, (720, 480))
 
 
-    # out_video = cv2.VideoWriter('/home/ubuntu/video.mp4', fcc,fps, out_size)
-    # out_map = cv2.VideoWriter('/home/ubuntu/minimap.mp4', fcc,fps, out_size)
+    # out_video = cv2.VideoWriter('/home/ubuntu/video.mp4', fcc,fps, (720, 480))
+    # out_map = cv2.VideoWriter('/home/ubuntu/minimap.mp4', fcc,fps, (720, 480))
 
     coordinate = np.empty((0,5))
 
@@ -58,8 +63,10 @@ def Tracker():
 
     ch2 = np.array([1280, 0, 1280, 0, 0])
     ch3 = np.array([2560, 0, 2560, 0, 0])
-
     
+    now_data = {}
+    
+
 
     with open('/home/ubuntu/Track_sample/datas/1/dataframe1.csv', 'r') as f:
     # with open('/home/ubuntu/Track_sample/ch1-1_tiny.txt', 'r') as f:
@@ -68,13 +75,17 @@ def Tracker():
             # data = f.readline().split(',')
             
             frame_num = data[0]
+            
             channel_name = data[1]
             # channel = [[], [], []]
 
             if len(data) > 1:
                 if past_frame_num != frame_num:
                     cams = [capture.retrieve()[1] for capture in cap if capture.grab()]
-                    if len(coordinate) != 0 and len(cams) == 3:
+                    if len(coordinate) != 0:
+                        
+
+                        now_data[frame_num] = list()
 
                         # images
                         canvas = cv2.imread('Track_sample/minimap_그림판.jpg')
@@ -82,7 +93,16 @@ def Tracker():
                         img = np.hstack((cam1, cam2, cam3))
 
                         # Tracker
-                        tracked_targets = tracker.update(coordinate, img.shape)
+                        tracked_targets = tracker.update(coordinate, (720, 3840, 3))
+
+                        # 새로운 좌표 저장
+                        coordinate = np.empty((0,5))
+                        if channel_name == 'ch2':
+                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]) + ch2, axis=0)
+                        elif channel_name == 'ch3':
+                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]) + ch3, axis=0)
+                        else:
+                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]), axis=0)
 
                         # variable
                         dict_img = dict()
@@ -101,7 +121,10 @@ def Tracker():
 
                             center = [int(i) for i in center]
 
-                            # Bbox Overlay
+                            
+
+
+                            # # Bbox Overlay
                             plot_cow(tracked_targets[num], center[0], center[1], tracked_targets[num].track_id, img, colors[tracked_targets[num].track_id % len(colors)])
 
                             # distance 사용하여 중복 Track 객체 삭제 알고리즘 사용하기 위한 변수 value 저장
@@ -116,27 +139,40 @@ def Tracker():
                             dict_minimap[tracked_targets[num].track_id] = mapper
                             dict_img[tracked_targets[num].track_id] = center
 
+                            dot = Point(mapper[0][0], mapper[0][1])
+
+                            meal, water = check_meal_water(dot)
+
+                            now_data[frame_num].append({
+                                'cow_id' : tracked_targets[num].track_id,
+                                'xc' : center[0],
+                                'yc' : center[1],
+                                'meal' : meal,
+                                'water' : water,
+                                'distance' : 0,
+                            })
+
+
                         ### distance를 이용하여 중복 Track된 객체를 삭제하는 코드
                         # dict_minimap안에 값들을 2중 for문을 활용하여 각각의 track_id에 대응되지 않는 값의 distance를 비교하여
                         # 해당 distance가 100 미만이라면 동일 객체라 선정
-                        # for k1, v1 in dict_minimap.items():
-                        #     for k2, v2 in dict_minimap.items():
-                        #         if k1 == k2:
-                        #             continue
-                        #         else:
-                        #             # distance가 100 미만 일 경우 == 동일 객체
-                        #             if distance(v1, v2) < 100:
-                        #                 remove_set.add(k1)
+                        for k1, v1 in dict_minimap.items():
+                            for k2, v2 in dict_minimap.items():
+                                if k1 == k2:
+                                    continue
+                                else:
+                                    # distance가 100 미만 일 경우 == 동일 객체
+                                    if distance(v1, v2) < 100:
+                                        remove_set.add(k1)
 
-                        # # 선정된 track_id를 사용하여 dict_minimap안의 대응 원소를 삭제
-                        # for remove_id in remove_set:
-                        #     dict_minimap.pop(remove_id)
+                        # 선정된 track_id를 사용하여 dict_minimap안의 대응 원소를 삭제
+                        for remove_id in remove_set:
+                            dict_minimap.pop(remove_id)
 
                         # 각 프레임 마다 Minimap Dot Overlay 생성
                         for key, value in dict_minimap.items():
-
                             plot_minimap(value[0][0], value[0][1], canvas, colors[key % len(colors)])
-                    
+
                                 
                         # # video write
                         # result_map.append(canvas)
@@ -145,22 +181,25 @@ def Tracker():
                         # result_video.append(img)
                         # out_video.write(result_video.pop())
 
+                        # img = cv2.resize(img, dsize=(720, 480), interpolation=cv2.INTER_AREA)
+                        # canvas = cv2.resize(canvas, dsize=(720, 480), interpolation=cv2.INTER_AREA)
 
                         # out_map.write(canvas)
                         # out_video.write(img)
 
+
                         image = np.vstack((img, canvas))
+
+                        image = cv2.resize(image, dsize=size_640, interpolation=cv2.INTER_AREA)
 
                         out_video_and_mini.write(image)
 
-                        # 새로운 좌표 저장
-                        coordinate = np.empty((0,5))
-                        if channel_name == 'ch2':
-                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]) + ch2, axis=0)
-                        elif channel_name == 'ch3':
-                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]) + ch3, axis=0)
-                        else:
-                            coordinate = np.append(coordinate, np.array([[int(i) for i in [float(i) for i in data[2:6]]] + [float(data[6])]]), axis=0)
+                        past_data = now_data[frame_num]
+                        
+
+
+
+                        
                         print(f'start   obj : 0{len(coordinate)} frame : {frame_num}')
                 else:
                     # 좌표 저장
@@ -177,9 +216,9 @@ def Tracker():
                         coor = len(coordinate)
                     print(f'ok      obj : {coor} frame : {frame_num}')
 
-                    # if int(frame_num) > 200:
-                    #     print(f'frame_num : {int(frame_num) -1}')
-                    #     break
+                    if int(frame_num) > 200:
+                        print(f'frame_num : {int(frame_num) -1}')
+                        break
 
 
 
@@ -189,7 +228,10 @@ def Tracker():
             past_frame_num = frame_num
 
 
+    save_path = '/home/ubuntu/'
 
+    with open(save_path + 'DB.json', 'w') as save:
+        json.dump(now_data, save)
 
 
 
@@ -247,12 +289,13 @@ if __name__ == '__main__':
 
 
 
+
 end = time.time()
 
 print("************************")
 print("************************")
 print("************************")
-print(f"*****{end - start:.5f} sec*****")
+print(f"*****{end - start:.5f} sec********")
 print("************************")
 print("************************")
 print("************************")
